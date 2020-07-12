@@ -1611,11 +1611,12 @@ ControllerMpd.prototype.searchArtist = function (commandArtist) {
             }
           }
         }
-        return defer.resolve(subList);
-      } else if (err) return defer.reject(new Error('Artist:' + err));
-      else return defer.resolve();
+        defer.resolve(subList);
+      } else if (err) defer.reject(new Error('Artist:' + err));
+      else defer.resolve();
     });
   });
+  return defer.promise;
 };
 // ALBUM
 ControllerMpd.prototype.searchAlbum = function (commandAlbum) {
@@ -1655,11 +1656,12 @@ ControllerMpd.prototype.searchAlbum = function (commandAlbum) {
             }
           }
         }
-        return defer.resolve(subList);
-      } else if (err) return defer.reject(new Error('Album:' + err));
-      else return defer.resolve();
+        defer.resolve(subList);
+      } else if (err) defer.reject(new Error('Album:' + err));
+      else defer.resolve();
     });
   });
+  return defer.promise;
 };
 // SONG
 ControllerMpd.prototype.searchSong = function (commandSong) {
@@ -1708,11 +1710,12 @@ ControllerMpd.prototype.searchSong = function (commandSong) {
             });
           }
         }
-        return defer.resolve(subList);
-      } else if (err) return defer.reject(new Error('Song:' + err));
-      else return defer.resolve();
+        defer.resolve(subList);
+      } else if (err) defer.reject(new Error('Song:' + err));
+      else defer.resolve();
     });
   });
+  return defer.promise;
 };
 
 ControllerMpd.prototype.searchFor = function (lines, startFrom, beginning) {
