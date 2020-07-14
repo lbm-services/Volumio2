@@ -1500,22 +1500,22 @@ ControllerMpd.prototype.listallFolder = function (uri) {
 ControllerMpd.prototype.search = function (query) {
   var self = this;
   var defer = libQ.defer();
-  var safeValue = query.value.replace(/"/g, '\\"');
-
-  var commandArtist = 'search artist ' + ' "' + safeValue + '"';
-  var commandAlbum = 'search album ' + ' "' + safeValue + '"';
-  var commandSong = 'search title ' + ' "' + safeValue + '"';
   var artistcount = 0;
   var albumcount = 0;
   var trackcount = 0;
   var deferArray = [];
+  
   deferArray.push(libQ.defer());
   deferArray.push(libQ.defer());
   deferArray.push(libQ.defer());
 
-  deferArray[0] = this.searchArtist(commandArtist);
-  deferArray[1] = this.searchAlbum(commandAlbum);
-  deferArray[2] = this.searchSong(commandSong);
+  deferArray[0] = this.searchArtist(query);
+  deferArray[1] = this.searchAlbum(query);
+  deferArray[2] = this.searchSong(query);
+
+  artistcount = deferArray[0].length; // why do we need this?
+  albumcount = deferArray[1].length;
+  trackcount = deferArray[2].length;
 
   libQ.all(deferArray).then(function (values) {
     var list = [];
@@ -1583,7 +1583,9 @@ ControllerMpd.prototype.search = function (query) {
 
 };
 // ARTIST
-ControllerMpd.prototype.searchArtist = function (commandArtist) {
+ControllerMpd.prototype.searchArtist = function (query) {
+  var safeValue = query.value.replace(/"/g, '\\"');
+  var commandArtist = 'search artist ' + ' "' + safeValue + '"';
   var cmd = libMpd.cmd;
   var defer = libQ.defer();
   self.mpdReady.then(function () {
@@ -1599,7 +1601,7 @@ ControllerMpd.prototype.searchArtist = function (commandArtist) {
             var artist = self.searchFor(lines, i + 1, 'Artist:');
             //* *********Check if artist is already found and exists in 'artistsfound' array
             if (artistsfound.indexOf(artist) < 0) { // Artist is not in 'artistsfound' array
-              artistcount++;
+              // artistcount++;
               artistsfound.push(artist);
               subList.push({
                 service: 'mpd',
@@ -1619,7 +1621,9 @@ ControllerMpd.prototype.searchArtist = function (commandArtist) {
   return defer.promise;
 };
 // ALBUM
-ControllerMpd.prototype.searchAlbum = function (commandAlbum) {
+ControllerMpd.prototype.searchAlbum = function (query) {
+  var safeValue = query.value.replace(/"/g, '\\"');
+  var commandAlbum = 'search album ' + ' "' + safeValue + '"';
   var cmd = libMpd.cmd;
   var defer = libQ.defer();
   self.mpdReady.then(function () {
@@ -1638,7 +1642,7 @@ ControllerMpd.prototype.searchAlbum = function (commandAlbum) {
 
             //* *******Check if album and artist combination is already found and exists in 'albumsfound' array (Allows for duplicate album names)
             if (album != undefined && artist != undefined && albumsfound.indexOf(album + artist) < 0) { // Album/Artist is not in 'albumsfound' array
-              albumcount++;
+              // albumcount++;
               albumsfound.push(album + artist);
               subList.push({
                 service: 'mpd',
@@ -1664,7 +1668,9 @@ ControllerMpd.prototype.searchAlbum = function (commandAlbum) {
   return defer.promise;
 };
 // SONG
-ControllerMpd.prototype.searchSong = function (commandSong) {
+ControllerMpd.prototype.searchSong = function (query) {
+  var safeValue = query.value.replace(/"/g, '\\"');
+  var commandSong = 'search title ' + ' "' + safeValue + '"'; // no sorting here? eg. sort TrackSort
   var cmd = libMpd.cmd;
   var defer = libQ.defer();
   self.mpdReady.then(function () {
@@ -1675,7 +1681,7 @@ ControllerMpd.prototype.searchSong = function (commandSong) {
         for (var i = 0; i < lines.length; i++) {
           var line = lines[i];
           if (line.startsWith('file:')) {
-            trackcount++;
+            // trackcount++;
             var path = line.slice(5).trimLeft();
             var name = path.split('/');
             var count = name.length;
