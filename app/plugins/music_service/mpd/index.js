@@ -1363,11 +1363,11 @@ ControllerMpd.prototype.lsInfo = function (uri) {
                   var title = title1;
                 }
               }
-              var year, albumart, tracknumber, duration, composer, genre;
+              var date, albumart, tracknumber, duration, composer, genre;
               if (self.commandRouter.sharedVars.get('extendedMetas')) {
-                year = self.searchFor(lines, i + 1, 'Date:');
-                if (year) {
-                  year = parseInt(year);
+                date = self.searchFor(lines, i + 1, 'Date:');
+                if (date) {
+                  date = parseInt(date);
                 }
 
                 albumart = self.getAlbumArt({artist: artist, album: album},
@@ -1397,7 +1397,7 @@ ControllerMpd.prototype.lsInfo = function (uri) {
                 artist: artist,
                 album: album,
                 uri: s0 + path,
-                year: year,
+                date: date,
                 albumart: albumart,
                 genre: genre,
                 tracknumber: tracknumber,
@@ -1505,7 +1505,9 @@ ControllerMpd.prototype.search = function (query) {
   var commandArtist = 'search artist ' + ' "' + safeValue + '"';
   var commandAlbum = 'search album ' + ' "' + safeValue + '"';
   var commandSong = 'search title ' + ' "' + safeValue + '"';
-
+  var artistcount = 0;
+  var albumcount = 0;
+  var trackcount = 0;
   var deferArray = [];
   deferArray.push(libQ.defer());
   deferArray.push(libQ.defer());
@@ -1526,6 +1528,7 @@ ControllerMpd.prototype.search = function (query) {
             var artist = self.searchFor(lines, i + 1, 'Artist:');
             //* *********Check if artist is already found and exists in 'artistsfound' array
             if (artistsfound.indexOf(artist) < 0) { // Artist is not in 'artistsfound' array
+              artistcount++;
               artistsfound.push(artist);
               subList.push({
                 service: 'mpd',
@@ -1559,6 +1562,7 @@ ControllerMpd.prototype.search = function (query) {
 
             //* *******Check if album and artist combination is already found and exists in 'albumsfound' array (Allows for duplicate album names)
             if (album != undefined && artist != undefined && albumsfound.indexOf(album + artist) < 0) { // Album/Artist is not in 'albumsfound' array
+              albumcount++;
               albumsfound.push(album + artist);
               subList.push({
                 service: 'mpd',
@@ -1587,6 +1591,7 @@ ControllerMpd.prototype.search = function (query) {
         for (var i = 0; i < lines.length; i++) {
           var line = lines[i];
           if (line.startsWith('file:')) {
+            trackcount++;
             var path = line.slice(5).trimLeft();
             var name = path.split('/');
             var count = name.length;
@@ -1624,15 +1629,15 @@ ControllerMpd.prototype.search = function (query) {
     });
   });
 
-
   libQ.all(deferArray).then(function (values) {
     var list = [];
 
     if (values[0]) {
-      var artistdesc = (values[0].length > 1) ? self.commandRouter.getI18nString('COMMON.ARTISTS') : self.commandRouter.getI18nString('COMMON.ARTIST');
+      var artistdesc = self.commandRouter.getI18nString('COMMON.ARTIST');
+      if (artistcount > 1) artistdesc = self.commandRouter.getI18nString('COMMON.ARTISTS');
       list = [
         {
-          'title': self.commandRouter.getI18nString('COMMON.FOUND') + ' ' + values[0].length + ' ' + artistdesc + " '" + query.value + "'",
+          'title': self.commandRouter.getI18nString('COMMON.FOUND') + ' ' + artistcount + ' ' + artistdesc + " '" + query.value + "'",
           'availableListViews': [
             'list',
             'grid'
@@ -1644,10 +1649,11 @@ ControllerMpd.prototype.search = function (query) {
     }
 
     if (values[1]) {
-      var albumdesc = (values[1].length > 1) ? self.commandRouter.getI18nString('COMMON.ALBUMS') : self.commandRouter.getI18nString('COMMON.ALBUM');
+      var albumdesc = self.commandRouter.getI18nString('COMMON.ALBUM');
+      if (albumcount > 1) albumdesc = self.commandRouter.getI18nString('COMMON.ALBUMS');
       var albList =
                 {
-                  'title': self.commandRouter.getI18nString('COMMON.FOUND') + ' ' + values[1].length + ' ' + albumdesc + " '" + query.value + "'",
+                  'title': self.commandRouter.getI18nString('COMMON.FOUND') + ' ' + albumcount + ' ' + albumdesc + " '" + query.value + "'",
                   'availableListViews': [
                     'list',
                     'grid'
@@ -1660,10 +1666,11 @@ ControllerMpd.prototype.search = function (query) {
     }
 
     if (values[2]) {
-      var trackdesc = (values[2].length > 1)  ? self.commandRouter.getI18nString('COMMON.TRACKS') : self.commandRouter.getI18nString('COMMON.TRACK');
+      var trackdesc = self.commandRouter.getI18nString('COMMON.TRACK');
+      if (trackcount > 1) var trackdesc = self.commandRouter.getI18nString('COMMON.TRACKS');
       var songList =
                 {
-                  'title': self.commandRouter.getI18nString('COMMON.FOUND') + ' ' + values[2].length + ' ' + trackdesc + " '" + query.value + "'",
+                  'title': self.commandRouter.getI18nString('COMMON.FOUND') + ' ' + trackcount + ' ' + trackdesc + " '" + query.value + "'",
                   'availableListViews': [
                     'list'
                   ],
@@ -3110,13 +3117,31 @@ ControllerMpd.prototype.listAlbumSongs = function (uri, index, previous) {
           });
         }
       }
+      if (duration != undefined && duration > 0) {
+        var durationminutes = Math.floor(duration / 60);
+        var durationseconds = duration - (durationminutes * 60);
+        if (durationseconds < 10) {
+          durationseconds = '0' + durationseconds;
+        }
+        duration = durationminutes + ':' + durationseconds;
+      }
+      var isOrphanAlbum = (uri === 'albums://*/');
+      duration =
+                response.navigation.info = {
+                  uri: uri,
+                  service: 'mpd',
+                  artist: isOrphanAlbum ? '*' : artist,
+                  album: album,
+                  albumart: albumart,
+                  date: isOrphanAlbum ? '' : date,
+                  genre: isOrphanAlbum ? '' : genre,
+                  type: 'album',
+                  trackType: albumTrackType,
+                  duration: duration
+                };
+    } else self.logger.error('Listalbum songs error: ' + err);
 
-    } else {
-      self.logger.error('Listalbum songs error: ' + err);
-    }
-  
-  defer.resolve(response);
-
+    defer.resolve(response);
   });
 
   return defer.promise;
@@ -3432,7 +3457,7 @@ ControllerMpd.prototype.listGenre = function (curUri) {
     'navigation': {
       'lists': [
         {
-          'title': self.commandRouter.getI18nString('COMMON.ARTISTS') + ' ' + self.commandRouter.getI18nString('COMMON.WITH') + " '" + genreName + "' " + self.commandRouter.getI18nString('COMMON.GENRE') + ' ' + self.commandRouter.getI18nString('COMMON.TRACKS'),
+          'title': genreName + ' ' + self.commandRouter.getI18nString('COMMON.ALBUMS'),
           'icon': 'fa icon',
           'availableListViews': [
             'list',
@@ -3441,19 +3466,11 @@ ControllerMpd.prototype.listGenre = function (curUri) {
           'items': []
         },
         {
-          'title': self.commandRouter.getI18nString('COMMON.ALBUMS') + ' ' + self.commandRouter.getI18nString('COMMON.WITH') + " '" + genreName + "' " + self.commandRouter.getI18nString('COMMON.GENRE') + ' ' + self.commandRouter.getI18nString('COMMON.TRACKS'),
+          'title': genreName + ' ' + self.commandRouter.getI18nString('COMMON.ARTISTS') ,
           'icon': 'fa icon',
           'availableListViews': [
             'list',
             'grid'
-          ],
-          'items': []
-        },
-        {
-          'title': self.commandRouter.getI18nString('COMMON.TRACKS') + " - '" + genreName + "' " + self.commandRouter.getI18nString('COMMON.GENRE'),
-          'icon': 'fa icon',
-          'availableListViews': [
-            'list'
           ],
           'items': []
         }
@@ -3512,25 +3529,12 @@ ControllerMpd.prototype.listGenre = function (curUri) {
                 title = name;
               }
 
-              if (title !== '') {
-                response.navigation.lists[2].items.push({
-                  service: 'mpd',
-                  type: 'song',
-                  title: title,
-                  artist: artist,
-                  album: album,
-                  date: date,
-                  albumart: albumart,
-                  uri: 'music-library/' + path
-                });
-              }
-
               if (albums.indexOf(album) === -1) {
                 albums.push(album);
                 albumsArt.push(albumart);
 
                 if (album !== '') {
-                  response.navigation.lists[1].items.push({
+                  response.navigation.lists[0].items.push({
                     service: 'mpd',
                     type: 'folder',
                     title: album,
@@ -3546,7 +3550,7 @@ ControllerMpd.prototype.listGenre = function (curUri) {
                 artistArt.push();
 
                 if (artist !== '') {
-                  response.navigation.lists[0].items.push({
+                  response.navigation.lists[1].items.push({
                     service: 'mpd',
                     type: 'folder',
                     title: artist,
